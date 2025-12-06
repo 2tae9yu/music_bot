@@ -13,6 +13,6 @@ export default {
         const isPaused = !queue.player.paused;
         await queue.player.setPaused(isPaused);
         
-        return interaction.reply(isPaused ? '⏸️ 일시정지했습니다.' : '▶️ 다시 재생합니다.');
+        return interaction.reply({ content: isPaused ? '⏸️ 곡을 일시정지합니다.' : '▶️ 곡을 다시 재생합니다.', ephemeral: true });
     }
 };

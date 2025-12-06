@@ -16,6 +16,6 @@ export default {
         // 노래를 멈춥니다. -> play.js의 'end' 이벤트가 발생합니다.
         await queue.player.stopTrack();
         
-        return interaction.reply('재생을 멈췄습니다. `/재생` 명령어로 이어서 들을 수 있습니다.');
+        return interaction.reply({ content: '현재 재생 중인 곡을 정지합니다. `/재생` 명령어로 대기열을 이어서 들을 수 있습니다.', ephemeral: true });
     }
 };

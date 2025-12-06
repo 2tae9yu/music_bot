@@ -25,15 +25,15 @@ client.queue = new Map();
 const foldersPath = path.join(process.cwd(), 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
-for (const folder of commandFolders) {
+for(const folder of commandFolders) {
     const commandsPath = path.join(foldersPath, folder);
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
     
-    for (const file of commandFiles) {
+    for(const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         const command = await import(pathToFileURL(filePath).href);
         
-        if ('data' in command.default && 'execute' in command.default) {
+        if('data' in command.default && 'execute' in command.default) {
             client.commands.set(command.default.data.name, command.default);
         }
     }
@@ -51,7 +51,7 @@ shoukaku.on('error', (_, error) => console.error('Lavalink Error:', error));
 shoukaku.on('ready', (name) => console.log(`✅ Lavalink Connected: ${name}`));
 
 client.on(Events.InteractionCreate, async interaction => {
-    if (!interaction.isChatInputCommand()) return;
+    if(!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);
 
@@ -61,7 +61,7 @@ client.on(Events.InteractionCreate, async interaction => {
         await command.execute(interaction, shoukaku);
     } catch (error) {
         console.error(error);
-        if (interaction.replied || interaction.deferred) {
+        if(interaction.replied || interaction.deferred) {
             await interaction.followUp({ content: '오류 발생!', ephemeral: true });
         } else {
             await interaction.reply({ content: '오류 발생!', ephemeral: true });
@@ -69,8 +69,8 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-client.once(Events.ClientReady, c => {
-    console.log(`🤖 로그인 완료: ${c.user.tag}`);
+client.once(Events.ClientReady, client => {
+    console.log(`🤖 로그인 완료: ${client.user.tag}`);
 });
 
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
@@ -97,7 +97,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
     // 변경 사항이 '봇이 있는 채널'에서 일어났는지 확인
     // (누군가 나갔거나 들어왔을 때)
-    if (oldState.channelId === botChannelId || newState.channelId === botChannelId) {
+    if(oldState.channelId === botChannelId || newState.channelId === botChannelId) {
         // 1초 대기 (서버 동기화)
         setTimeout(async () => {
             try {
@@ -109,10 +109,10 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
                 // 봇 제외 사람 수 세기
                 const members = channel.members.filter(member => !member.user.bot);
 
-                console.log(`👀 인원 점검: ${members.size}명 남음`);
+                console.log(`👀 인원 확인: ${members.size}명 남음`);
 
-                if (members.size === 0) {
-                    console.log('👋 사람이 없어서 나갑니다.');
+                if(members.size === 0) {
+                    console.log('👋 보이스 채널에 사용자가 없어 연결을 종료합니다.');
                     
                     if(queue.textChannel) {
                         queue.textChannel.send('보이스 채널에 사용자가 없어 연결을 종료합니다.');

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, time } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -8,7 +8,7 @@ export default {
             return option
                 .setName('제목')
                 .setDescription('제목 또는 URL을 입력해주세요.')
-                .setRequired(true)
+                .setRequired(false)
         }),
 
     async execute(interaction, shoukaku) {
@@ -20,6 +20,30 @@ export default {
         }
 
         const title = interaction.options.getString('제목');
+
+        // 제목 입력 없이 /재생 했을 때 (멈춘 노래 다시 재생 로직)
+        if(!title) {
+            const queue = interaction.client.queue.get(interaction.guildId);
+            const player = shoukaku.players.get(interaction.guildId);
+
+            if(!queue || queue.songs.length === 0) {
+                return interaction.reply({ content: '대기열에 재생할 노래가 없습니다.', ephemeral: true });
+            }
+            if(player && player.track) {
+                return interaction.reply({ content: '이미 노래가 재생 중입니다.', ephemeral: true });
+            }
+
+            // 재생 시작
+            await interaction.deferReply();
+            
+            // 강제 정지 풀고 1번 곡 재생
+            queue.isForcedStop = false;
+            await queue.player.playTrack({ track: { encoded: queue.songs[0].encoded } });
+
+            const embed = createEmbed(queue.songs[0], null);
+
+            return interaction.editReply({ embeds: [embed] });
+        }
 
         // 우선 대기
         await interaction.deferReply();
@@ -42,8 +66,11 @@ export default {
             if(Array.isArray(track)) track = track[0];
         }
 
+        // 노래 데이터에 신청자(유저) 정보를 붙여둡니다. 
+        // (이렇게 해야 나중에 대기열에서 재생될 때도 누가 신청했는지 알 수 있음)
+        track.requester = interaction.user;
 
-        // 2. 플레이어 준비
+        // 플레이어 준비
         let player = shoukaku.players.get(interaction.guildId);
         if(!player) {
             player = await shoukaku.joinVoiceChannel({
@@ -54,7 +81,7 @@ export default {
             });
         }
 
-        // 3. 큐 관리
+        // 큐 관리
         let queue = interaction.client.queue.get(interaction.guildId);
 
         // 이미 노래가 재생 중이라면 대기열에 추가
@@ -90,8 +117,12 @@ export default {
 
                 // 일반적인 경우: 다음 곡이 있으면 재생
                 if(currentQueue.songs.length > 0) {
-                    player.playTrack({ track: { encoded: currentQueue.songs[0].encoded } });
-                    currentQueue.textChannel.send(`현재 재생 중: ${currentQueue.songs[0].info.title}`);
+                    const nextTrack = currentQueue.songs[0];
+                    player.playTrack({ track: { encoded: nextTrack.encoded } });
+
+                    // 다음 곡 재생 시: 순번 없이(null) 호출 -> "현재 재생 중" Embed
+                    const embed = createEmbed(nextTrack, null);
+                    currentQueue.textChannel.send({ embeds: [embed] });
                 } else {
                     // 대기열이 비었으면 타이머 시작
                     disconnectTimer(currentQueue, interaction, shoukaku);
@@ -99,7 +130,7 @@ export default {
             });
         }
 
-        // 4. 노래 추가 및 재생 판단
+        // 노래 추가 및 재생 판단
         queue.songs.push(track);
 
         // 타이머 취소 (노래가 들어왔으니까)
@@ -115,12 +146,62 @@ export default {
             
             // 현재 대기열의 첫 번째 곡 재생 (방금 넣은 곡일 수도 있고, 아까 남은 곡일 수도 있음)
             await player.playTrack({ track: { encoded: queue.songs[0].encoded } });
-            return interaction.editReply(`현재 재생 중: ${track.info.title}`);
+
+            // 순번 없음(null) -> "현재 재생 중" 모드
+            const embed = createEmbed(track, null);
+            return interaction.editReply({ embeds: [embed] });
         } else {
-            return interaction.reply(`대기열 추가됨: ${track.info.title}`);
+            // 대기열 추가
+            const position  = queue.songs.length - 1;
+
+            // 순번 있음(position) -> "대기열 추가"
+            const embed = createEmbed(track, position);
+            return interaction.editReply({ embeds: [embed] });
         }
     }
 };
+
+function createEmbed(track, position) {
+    // 신청자가 없으면 봇 이름으로 대체 (오류 방지)
+    const requester = track.requester || { username: '알 수 없음', displayAvatarURL: () => '' };
+
+    const embed = new EmbedBuilder();
+
+    if(position !== null) {
+        // 대기열 추가 embed
+        embed.setColor('#8e8e8e')
+        // 본문(Description)에 한 줄로 요약
+        // 형식: 🎧 Add Queue - 노래 제목 | #1
+        embed.setTitle('🎧 Add Queue')
+        embed.setDescription(`**${track.info.title}** | \`대기열 #${position}\``);
+    } else {
+        // 현재 재생 중
+        embed.setColor('#1db954') // 💚
+        embed.setTitle('💿 Now Playing')
+        embed.setThumbnail(`https://img.youtube.com/vi/${track.info.identifier}/mqdefault.jpg`)
+        embed.setDescription(`**${track.info.title}**`)
+        embed.addFields(
+            // inline: true 옵션으로 두 항목을 가로로 나란히 배치
+            { name: '곡 길이', value: formatTime(track.info.length), inline: true },
+            { name: '음원', value: `[링크](${track.info.uri})`, inline: true }
+        );
+        embed.setFooter({
+            iconURL: requester.displayAvatarURL(), // 신청자 프로필 사진
+            text: `${requester.username}`, // 신청자 닉네임
+        });
+    }
+
+    return embed;
+}
+
+// 시간 포맷 함수
+function formatTime(ms) {
+    if (!ms) return 'Live';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 // 중복되는 타이머 코드를 함수로 뺐습니다 (깔끔하게)
 function disconnectTimer(queue, interaction, shoukaku) {

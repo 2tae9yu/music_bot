@@ -16,7 +16,10 @@ export default {
             return interaction.reply({ content: '대기열이 비어있어 건너뛸 수 없습니다.', ephemeral: true });
         }
 
-        // 현재 곡을 강제로 멈추면 -> 자동으로 'end' 이벤트 발생 -> 다음 곡 재생됨
-        await queue.player.stopTrack();
+        await interaction.deferReply();
+
+        queue.player.stopTrack();
+
+        await interaction.deleteReply();
     }
 };

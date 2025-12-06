@@ -24,7 +24,7 @@ export default {
         // 입력한 번호가 실제 대기열 범위를 벗어났는지 확인
         // queue.songs[0]은 현재 재생 곡이므로, 실제 대기열은 1번부터 시작합니다.
         // 따라서 유저가 입력한 index가 배열 길이보다 작아야 유효합니다.
-        if (index >= queue.songs.length) {
+        if(index >= queue.songs.length) {
             return interaction.reply({ content: `${index}번 노래는 존재하지 않습니다. 대기열을 확인해주세요.`, ephemeral: true });
         }
 
