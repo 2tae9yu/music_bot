@@ -210,11 +210,17 @@ function disconnectTimer(queue, interaction, shoukaku) {
     
     queue.timeout = setTimeout(() => {
         const checkQueue = interaction.client.queue.get(interaction.guildId);
-        // 여전히 노래가 안 나오고 있으면 종료
-        if (checkQueue && !checkQueue.player.track) {
+        
+        // 두 가지 조건 중 하나라도 맞으면 퇴장합니다.
+        // 1. 대기열이 텅 비었을 때 (songs.length === 0) 👉 노래 다 듣고 끝난 경우 해결
+        // 2. OR 플레이어가 재생 중인 곡이 없을 때 (!player.track) 👉 /정지 명령어로 멈춘 경우 해결
+        if(checkQueue && (checkQueue.songs.length === 0 || !checkQueue.player.track)) {
             shoukaku.leaveVoiceChannel(interaction.guildId);
             interaction.client.queue.delete(interaction.guildId);
             checkQueue.textChannel.send('동작이 없어 연결을 종료합니다.');
+        } 
+        else if(checkQueue) {
+            checkQueue.timeout = null;
         }
     }, 1 * 60 * 1000); // 1분
 }
