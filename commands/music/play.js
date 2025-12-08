@@ -19,6 +19,14 @@ export default {
             return interaction.reply({ content: '음성 채널에 연결되어있지 않습니다.', ephemeral: true });
         }
 
+        // 봇과 같은 채널에 있는지 확인하는 코드
+        const botVoiceChannelId = interaction.guild.members.me.voice.channelId;
+        
+        // "봇이 이미 보이스 채널에 속해있고, 내 방이랑 다르다면"
+        if(botVoiceChannelId && voiceChannel.id !== botVoiceChannelId) {
+            return interaction.reply({ content: '봇과 같은 음성 채널에 있어야합니다.', ephemeral: true });
+        }
+
         const title = interaction.options.getString('제목');
 
         // 제목 입력 없이 /재생 했을 때 (멈춘 노래 다시 재생 로직)
@@ -29,6 +37,7 @@ export default {
             if(!queue || queue.songs.length === 0) {
                 return interaction.reply({ content: '대기열에 재생할 노래가 없습니다.', ephemeral: true });
             }
+            
             if(player && player.track) {
                 return interaction.reply({ content: '이미 노래가 재생 중입니다.', ephemeral: true });
             }
@@ -54,7 +63,9 @@ export default {
         const result = await node.rest.resolve(search);
 
         if(!result || result.loadType === 'empty') {
-            return interaction.editReply('검색 결과가 없습니다.');
+            await interaction.deleteReply();
+
+            return interaction.reply({ content: '검색 결과가 없습니다.', ephemeral: true });
         }
 
         let track;
@@ -72,6 +83,7 @@ export default {
 
         // 플레이어 준비
         let player = shoukaku.players.get(interaction.guildId);
+
         if(!player) {
             player = await shoukaku.joinVoiceChannel({
                 guildId: interaction.guildId,
@@ -196,17 +208,17 @@ function createEmbed(track, position) {
 
 // 시간 포맷 함수
 function formatTime(ms) {
-    if (!ms) return 'Live';
+    if(!ms) return 'Live';
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// 중복되는 타이머 코드를 함수로 뺐습니다 (깔끔하게)
+// [타이머 함수]
 function disconnectTimer(queue, interaction, shoukaku) {
     // 이미 타이머가 있으면 무시
-    if (queue.timeout) return;
+    if(queue.timeout) return;
     
     queue.timeout = setTimeout(() => {
         const checkQueue = interaction.client.queue.get(interaction.guildId);

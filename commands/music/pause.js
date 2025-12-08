@@ -7,7 +7,7 @@ export default {
 
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guildId);
-        if(!queue) return interaction.reply('재생 중인 노래가 없습니다.');
+        if(!queue) return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
 
         // 현재 상태 반대로 변경 (멈춤 <-> 재생)
         const isPaused = !queue.player.paused;

@@ -10,7 +10,7 @@ export default {
 
         // 대기열이 비어 있을 때
         if(!queue || queue.songs.length === 0) {
-            return interaction.reply('대기열이 비어있습니다. 노래를 추가해주세요!');
+            return interaction.reply({ content: '대기열이 비어있습니다. 곡을 추가해주세요.', ephemeral: true });
         }
 
         // 현재 재생 중인 곡 (배열의 0번)
@@ -44,7 +44,7 @@ export default {
                 value: listString + (tracks.length > limit ? `\n\n...외 **${tracks.length - limit}**곡` : '')
             });
         } else {
-            embed.addFields({ name: '⏱️ 대기 중인 곡', value: '대기 중인 노래가 없습니다.' });
+            embed.addFields({ name: '⏱️ 대기 중인 곡', value: '대기 중인 곡이 없습니다.' });
         }
 
         return interaction.reply({ embeds: [embed] });

@@ -61,10 +61,11 @@ client.on(Events.InteractionCreate, async interaction => {
         await command.execute(interaction, shoukaku);
     } catch (error) {
         console.error(error);
+
         if(interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: '오류 발생!', ephemeral: true });
+            await interaction.reply({ content: '오류가 발생하였습니다.', ephemeral: true });
         } else {
-            await interaction.reply({ content: '오류 발생!', ephemeral: true });
+            await interaction.followUp({ content: '오류가 발생하였습니다.', ephemeral: true });
         }
     }
 });
@@ -73,29 +74,30 @@ client.once(Events.ClientReady, client => {
     console.log(`🤖 로그인 완료: ${client.user.tag}`);
 });
 
-client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+client.on(Events.VoiceStateUpdate, async(oldState, newState) => {
     // 기초 정보 확인
     const guild = oldState.guild;
     const queue = client.queue.get(guild.id);
 
-    // 대기열이 없으면 봇이 노래를 안 틀고 있다는 뜻이므로 무시
-    if(!queue) return;
-
     // 봇(나 자신)이 실제로 음성 채널에 있는지 확인
     // Lavalink(Shoukaku)가 아니라 디스코드 멤버 정보에서 직접 가져옴
-    const bot = guild.members.me; 
+    const bot = guild.members.me;
 
     // 봇이 음성 채널에 아예 없다면 대기열만 남은 상태이므로 정리하고 나옴
     if(!bot.voice.channelId) {
+        shoukaku.leaveVoiceChannel(guild.id);
+
         client.queue.delete(guild.id);
 
         return;
     }
 
-    // 봇이 있는 채널 ID
+    // 대기열이 없으면 봇이 노래를 안 틀고 있다는 뜻이므로 VoiceStateUpdate 이벤트 바로 종료
+    if(!queue) return;
+
+    // 봇이 있는 채널 ID 확인
     const botChannelId = bot.voice.channelId;
 
-    // 변경 사항이 '봇이 있는 채널'에서 일어났는지 확인
     // (누군가 나갔거나 들어왔을 때)
     if(oldState.channelId === botChannelId || newState.channelId === botChannelId) {
         // 1초 대기 (서버 동기화)

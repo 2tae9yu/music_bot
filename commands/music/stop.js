@@ -8,7 +8,7 @@ export default {
     async execute(interaction) {
         const queue = interaction.client.queue.get(interaction.guildId);
 
-        if(!queue) return interaction.reply({ content: '재생 중인 노래가 없습니다.', ephemeral: true });
+        if(!queue) return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
 
         // 🚨 핵심: "이건 강제로 멈춘 거야"라고 깃발을 꽂습니다.
         queue.isForcedStop = true;

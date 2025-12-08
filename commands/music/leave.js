@@ -19,11 +19,12 @@ export default {
 
         // 봇이 채널에 있다면 강제 퇴장
         const bot = interaction.guild.members.me;
+        
         if(bot.voice.channel) {
             shoukaku.leaveVoiceChannel(interaction.guildId);
             return interaction.reply({ content: '연결을 끊었습니다.' , ephemeral: true });
         }
 
-        return interaction.reply({ content: '재생 중인 노래가 없습니다.', ephemeral: true });
+        return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
     }
 };
