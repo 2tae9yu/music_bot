@@ -72,10 +72,26 @@ client.on(Events.InteractionCreate, async interaction => {
             message = '오류가 발생하였습니다.';
         }
 
+        const guildId = interaction.guildId;
+        const bot = interaction.guild.members.me;
+
+        // 1) 봇이 음성 채널에 들어가 있고
+        if(bot && bot.voice.channelId) {
+            const currentQueue = client.queue.get(guildId);
+
+            // 2) 대기열이 아예 없거나, 비어있다면 (즉, 노래 재생에 실패한 상황이라면)
+            if(!currentQueue || currentQueue.tracks.length === 0) {
+                // 채널에서 내보내고 대기열 정리
+                shoukaku.leaveVoiceChannel(guildId);
+                client.queue.delete(guildId);
+            }
+        }
+
         // 답변 방식 결정 및 전송
         // 이미 답변을 했거나(replied), 답변 대기 상태(deferred)라면 followUp을 써야 함
         if(interaction.replied || interaction.deferred) {
             await interaction.followUp({ content: message, ephemeral: true }).catch(() => {});
+            
         } else {
             // 아직 아무 답변도 안 했다면 reply를 써야 함
             await interaction.reply({ content: message, ephemeral: true }).catch(() => {});

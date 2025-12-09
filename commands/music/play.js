@@ -62,10 +62,34 @@ export default {
         const search = title.startsWith('http') ? title : `ytsearch:${title}`;
         const result = await node.rest.resolve(search);
 
-        if(!result || result.loadType === 'empty') {
-            await interaction.deleteReply();
+        // 노드가 연결되지 않았을 때 봇이 죽는 것을 방지
+        if(!node) {
+            return interaction.editReply({ 
+                content: '뮤직 서버와 연결되지 않았습니다.\n잠시 후 다시 시도하거나 관리자에게 문의하세요.', 
+                ephemeral: true 
+            });
+        }
 
-            return interaction.reply({ content: '검색 결과가 없습니다.', ephemeral: true });
+        // 1. 결과 객체 자체가 없는 경우
+        if(!result) {
+            return interaction.editReply({ content: '검색 결과가 없습니다.', ephemeral: true });
+        }
+
+        // 2. loadType(결과 상태) 확인
+        // Lavalink 버전에 따라 반환값이 다를 수 있어 여러 케이스를 확인합니다.
+        switch(result.loadType) {
+            case 'empty':
+            case 'NO_MATCH': 
+                return interaction.editReply({ content: '검색 결과가 없습니다.', ephemeral: true });
+
+            case 'error':
+            case 'LOAD_FAILED':
+                console.error(`Lavalink Load Error: ${result.exception?.message}`);
+
+                return interaction.editReply({ 
+                    content: `🚫 오류가 발생했습니다.\n내용: ${result.exception?.message || '알 수 없는 오류'}`,
+                    ephemeral: true 
+                });
         }
 
         let track;
@@ -87,7 +111,7 @@ export default {
         if(!player) {
             player = await shoukaku.joinVoiceChannel({
                 guildId: interaction.guildId,
-                channelId: voiceChannel.id,
+                channelId: userVoiceChannel.id,
                 shardId: 0,
                 deaf: true
             });
