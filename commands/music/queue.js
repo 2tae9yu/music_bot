@@ -36,7 +36,7 @@ export default {
 
             const listString = displayTracks.map((track, i) => {
                 // 가독성을 위해 순번을 굵게 처리
-                return `**${i + 1}.** [${track.info.title}](${currentTrack.info.uri}) - \`${formatTime(track.info.length)}\``;
+                return `**${i + 1}.** [${track.info.title}](${track.info.uri}) - \`${formatTime(track.info.length)}\``;
             }).join('\n');
 
             embed.addFields({

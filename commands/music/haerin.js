@@ -72,7 +72,7 @@ export default {
                     player.playTrack({ track: { encoded: nextTrack.encoded } });
 
                     const embed = createEmbed(nextTrack, null);
-                    currentQueue.textChannel.send({ embeds: [embed] });
+                    currentQueue.textChannel.send({ embeds: [embed] }).catch(() => {});
                 } else {
                     disconnectTimer(currentQueue, interaction, shoukaku);
                 }
@@ -149,7 +149,7 @@ function disconnectTimer(queue, interaction, shoukaku) {
         if(checkQueue && (checkQueue.songs.length === 0 || !checkQueue.player.track)) {
             shoukaku.leaveVoiceChannel(interaction.guildId);
             interaction.client.queue.delete(interaction.guildId);
-            checkQueue.textChannel.send('동작이 없어 연결을 종료합니다.');
+            checkQueue.textChannel.send('동작이 없어 연결을 종료합니다.').catch(() => {});
         } 
         else if(checkQueue) {
             checkQueue.timeout = null;

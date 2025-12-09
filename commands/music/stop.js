@@ -6,6 +6,18 @@ export default {
         .setDescription('현재 재생 중인 노래를 멈추고 대기 상태로 전환합니다. (대기열 유지)'),
 
     async execute(interaction) {
+        // 유저가 음성 채널에 있는지 확인
+        const userVoiceChannel = interaction.member.voice.channel;
+        if(!userVoiceChannel) {
+            return interaction.reply({ content: '음성 채널에 연결되어있지 않습니다.', ephemeral: true });
+        }
+
+        // 봇과 같은 방인지 확인 (남의 노래 끄기 방지)
+        const botVoiceChannel = interaction.guild.members.me.voice.channel;
+        if(botVoiceChannel && botVoiceChannel.id !== userVoiceChannel.id) {
+            return interaction.reply({ content: '봇과 같은 음성 채널에 있어야합니다.', ephemeral: true });
+        }
+
         const queue = interaction.client.queue.get(interaction.guildId);
 
         if(!queue) return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });

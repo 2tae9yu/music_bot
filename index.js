@@ -54,18 +54,31 @@ client.on(Events.InteractionCreate, async interaction => {
     if(!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);
+    if(!command) return;
 
-    if (!command) return;
+    // 타임아웃 설정
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
 
     try {
-        await command.execute(interaction, shoukaku);
-    } catch (error) {
+        await Promise.race([ command.execute(interaction, shoukaku), timeout ]);
+    } catch(error) {
         console.error(error);
 
-        if(interaction.replied || interaction.deferred) {
-            await interaction.reply({ content: '오류가 발생하였습니다.', ephemeral: true });
+        let message;
+
+        if(error.message === 'timeout') {
+            message = '응답 시간이 초과되었습니다.';
         } else {
-            await interaction.followUp({ content: '오류가 발생하였습니다.', ephemeral: true });
+            message = '오류가 발생하였습니다.';
+        }
+
+        // 답변 방식 결정 및 전송
+        // 이미 답변을 했거나(replied), 답변 대기 상태(deferred)라면 followUp을 써야 함
+        if(interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: message, ephemeral: true }).catch(() => {});
+        } else {
+            // 아직 아무 답변도 안 했다면 reply를 써야 함
+            await interaction.reply({ content: message, ephemeral: true }).catch(() => {});
         }
     }
 });

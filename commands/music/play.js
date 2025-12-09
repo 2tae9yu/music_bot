@@ -13,9 +13,9 @@ export default {
 
     async execute(interaction, shoukaku) {
         // 유저 음성 채널 확인
-        const voiceChannel = interaction.member.voice.channel;
+        const userVoiceChannel = interaction.member.voice.channel;
 
-        if(!voiceChannel) {
+        if(!userVoiceChannel) {
             return interaction.reply({ content: '음성 채널에 연결되어있지 않습니다.', ephemeral: true });
         }
 
@@ -23,7 +23,7 @@ export default {
         const botVoiceChannelId = interaction.guild.members.me.voice.channelId;
         
         // "봇이 이미 보이스 채널에 속해있고, 내 방이랑 다르다면"
-        if(botVoiceChannelId && voiceChannel.id !== botVoiceChannelId) {
+        if(botVoiceChannelId && userVoiceChannel.id !== botVoiceChannelId) {
             return interaction.reply({ content: '봇과 같은 음성 채널에 있어야합니다.', ephemeral: true });
         }
 
@@ -134,7 +134,7 @@ export default {
 
                     // 다음 곡 재생 시: 순번 없이(null) 호출 -> "현재 재생 중" Embed
                     const embed = createEmbed(nextTrack, null);
-                    currentQueue.textChannel.send({ embeds: [embed] });
+                    currentQueue.textChannel.send({ embeds: [embed] }).catch(() => {});
                 } else {
                     // 대기열이 비었으면 타이머 시작
                     disconnectTimer(currentQueue, interaction, shoukaku);
@@ -229,7 +229,7 @@ function disconnectTimer(queue, interaction, shoukaku) {
         if(checkQueue && (checkQueue.songs.length === 0 || !checkQueue.player.track)) {
             shoukaku.leaveVoiceChannel(interaction.guildId);
             interaction.client.queue.delete(interaction.guildId);
-            checkQueue.textChannel.send('동작이 없어 연결을 종료합니다.');
+            checkQueue.textChannel.send('동작이 없어 연결을 종료합니다.').catch(() => {});
         } 
         else if(checkQueue) {
             checkQueue.timeout = null;
