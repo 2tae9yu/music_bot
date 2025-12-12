@@ -15,7 +15,10 @@ export default {
         }
 
         const queue = interaction.client.queue.get(interaction.guildId);
-        if(!queue) return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
+        // /정지 명령어로 인해 타이머가 돌고 있을 때 /일시정지 누르는 것을 방지합니다.
+        if(!queue || !queue.player.track) {
+            return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
+        }
 
         // 현재 상태 반대로 변경 (멈춤 <-> 재생)
         const isPaused = !queue.player.paused;

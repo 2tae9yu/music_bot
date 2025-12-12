@@ -47,6 +47,12 @@ export default {
             
             // 강제 정지 풀고 1번 곡 재생
             queue.isForcedStop = false;
+
+            if(queue.timeout) {
+                clearTimeout(queue.timeout);
+                queue.timeout = null;
+            }
+            
             await queue.player.playTrack({ track: { encoded: queue.songs[0].encoded } });
 
             const embed = createEmbed(queue.songs[0], null);
@@ -60,9 +66,15 @@ export default {
         // 노드 및 트랙 검색
         const node = shoukaku.options.nodeResolver(shoukaku.nodes);
         const search = title.startsWith('http') ? title : `ytsearch:${title}`;
-        const result = await node.rest.resolve(search);
 
-        // 노드가 연결되지 않았을 때 봇이 죽는 것을 방지
+        let result;
+
+        try {
+            result = await node.rest.resolve(search);
+        } catch(error) {
+            return interaction.editReply({ content: '검색 중 오류가 발생했습니다.', ephemeral: true });
+        }
+
         if(!node) {
             return interaction.editReply({ 
                 content: '뮤직 서버와 연결되지 않았습니다.\n잠시 후 다시 시도하거나 관리자에게 문의하세요.', 
@@ -70,13 +82,10 @@ export default {
             });
         }
 
-        // 1. 결과 객체 자체가 없는 경우
         if(!result) {
             return interaction.editReply({ content: '검색 결과가 없습니다.', ephemeral: true });
         }
 
-        // 2. loadType(결과 상태) 확인
-        // Lavalink 버전에 따라 반환값이 다를 수 있어 여러 케이스를 확인합니다.
         switch(result.loadType) {
             case 'empty':
             case 'NO_MATCH': 
@@ -112,7 +121,7 @@ export default {
             player = await shoukaku.joinVoiceChannel({
                 guildId: interaction.guildId,
                 channelId: userVoiceChannel.id,
-                shardId: 0,
+                shardId: interaction.guild.shardId,
                 deaf: true
             });
         }
@@ -169,23 +178,34 @@ export default {
         // 노래 추가 및 재생 판단
         queue.songs.push(track);
 
+        let rest = false;
+
         // 타이머 취소 (노래가 들어왔으니까)
         if(queue.timeout) {
             clearTimeout(queue.timeout);
             queue.timeout = null;
+            rest = true; // 타이머가 돌고 있었다면 "쉬고 있었다"고 체크
         }
 
         // 플레이어가 멈춰있으면(정지 상태거나 처음일 때) -> 바로 재생
-        if(!player.track) {
+        if(!player.track || rest) {
             // 정지 상태였을 수도 있으니 강제 정지 깃발 해제
             queue.isForcedStop = false; 
             
             // 현재 대기열의 첫 번째 곡 재생 (방금 넣은 곡일 수도 있고, 아까 남은 곡일 수도 있음)
             await player.playTrack({ track: { encoded: queue.songs[0].encoded } });
 
-            // 순번 없음(null) -> "현재 재생 중" 모드
-            const embed = createEmbed(track, null);
-            return interaction.editReply({ embeds: [embed] });
+            // "지금 재생 시작한 곡"과 "내가 신청한 곡"이 같은지 확인
+            if(queue.songs[0].encoded === track.encoded) {
+                // 같으면 -> 재생 시작 메시지
+                const embed = createEmbed(track, null);
+                return interaction.editReply({ embeds: [embed] });
+            } else {
+                // 다르면(밀린 노래가 먼저 나옴) -> 대기열 추가 메시지
+                const position = queue.songs.length - 1;
+                const embed = createEmbed(track, position);
+                return interaction.editReply({ embeds: [embed] });
+            }
         } else {
             // 대기열 추가
             const position  = queue.songs.length - 1;

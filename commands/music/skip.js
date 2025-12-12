@@ -20,8 +20,10 @@ export default {
 
         const queue = interaction.client.queue.get(interaction.guildId);
 
-        // 재생 중인 곡이 없을때
-        if(!queue) return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
+        // 재생 중인 곡이 없거나(!queue), 노래 객체는 있는데 실제 재생이 안 되는 경우(!player.track) 차단
+        if(!queue || !queue.player.track) {
+            return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
+        }
 
         // 대기열에 다음 곡이 없을 때
         if(queue.songs.length <= 1) {

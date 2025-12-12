@@ -20,7 +20,10 @@ export default {
 
         const queue = interaction.client.queue.get(interaction.guildId);
 
-        if(!queue) return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
+        // 대기열이 없거나(queue가 null), 대기열은 있는데 노래가 안 나오는 경우(!player.track) 둘 다 차단
+        if(!queue || !queue.player.track) {
+            return interaction.reply({ content: '재생 중인 곡이 없습니다.', ephemeral: true });
+        }
 
         // 🚨 핵심: "이건 강제로 멈춘 거야"라고 깃발을 꽂습니다.
         queue.isForcedStop = true;

@@ -28,6 +28,10 @@ export default {
             // 3. [초기화] 기존 대기열 및 재생 중인 노래 정리
             const oldQueue = interaction.client.queue.get(guildId);
             if(oldQueue) {
+                // ⚠️ [수정] 중요! 기존에 돌고 있던 타이머가 있다면 반드시 끄고 삭제해야 합니다.
+                // 이걸 안 하면 이동했지만, 예전 타이머로 인해 봇이 퇴장.
+                if(oldQueue.timeout) clearTimeout(oldQueue.timeout);
+
                 // 대기열 삭제
                 interaction.client.queue.delete(guildId);
             }
@@ -41,7 +45,7 @@ export default {
             const player = await shoukaku.joinVoiceChannel({
                 guildId: guildId,
                 channelId: userVoiceChannel.id,
-                shardId: 0,
+                shardId: interaction.guild.shardId,
                 deaf: true
             });
 
