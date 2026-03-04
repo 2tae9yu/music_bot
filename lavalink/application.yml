@@ -26,6 +26,6 @@ plugins:
     # 봇이 사람인 척 연기할 클라이언트 목록 (MUSIC이 가장 잘 됩니다)
     clients:
       - MUSIC
-      - ANDROID_VR
       - WEB
-      - WEB_EMBEDDED
+      - WEBEMBEDDED
+      - ANDROID_VR
