@@ -13,6 +13,6 @@
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3",
     "libsodium-wrappers": "^0.7.15",
-    "shoukaku": "github:shipgirlproject/Shoukaku#master"
+    "shoukaku": "^4.3.0"
   }
 }
