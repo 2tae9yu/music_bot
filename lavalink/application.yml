@@ -4,7 +4,7 @@ server: # REST and WS server
 lavalink:
   plugins:
     # ✅ 핵심: 유튜브 플러그인을 자동으로 다운로드합니다.
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.16.0"
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.0"
       snapshot: false
   server:
     password: "0000"
