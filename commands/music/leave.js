@@ -1,4 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
+import { resetTimer } from '../../utils/musicUtils.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -29,7 +30,7 @@ export default {
         const queue = interaction.client.queue.get(interaction.guildId);
 
         // 타이머 정리
-        if(queue && queue.timeout) clearTimeout(queue.timeout);
+        resetTimer(interaction.client, interaction.guildId);
 
         // 연결 끊기 (플레이어 삭제 포함)
         shoukaku.leaveVoiceChannel(interaction.guildId);

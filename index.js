@@ -21,6 +21,9 @@ client.commands = new Collection();
 // 대기열 저장 공간
 client.queue = new Map();
 
+// 전역 타이머 저장 공간
+client.timers = new Map();
+
 // URL 객체 대신 process.cwd()와 path.join 사용
 const foldersPath = path.join(process.cwd(), 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
@@ -80,7 +83,7 @@ client.on(Events.InteractionCreate, async interaction => {
             const currentQueue = client.queue.get(guildId);
 
             // 2) 대기열이 아예 없거나, 비어있다면 (즉, 노래 재생에 실패한 상황이라면)
-            if(!currentQueue || currentQueue.tracks.length === 0) {
+            if(!currentQueue || currentQueue.songs.length === 0) {
                 // 채널에서 내보내고 대기열 정리
                 shoukaku.leaveVoiceChannel(guildId);
                 client.queue.delete(guildId);
@@ -132,6 +135,10 @@ client.on(Events.VoiceStateUpdate, async(oldState, newState) => {
         // 1초 대기 (서버 동기화)
         setTimeout(async () => {
             try {
+                // 🛑 [추가된 방어막] 1초 기다리는 동안 이미 다른 이벤트가 대기열을 지웠다면 즉시 취소!
+                const currentQueue = client.queue.get(guild.id);
+                if(!currentQueue) return;
+
                 // 채널 정보 강제 갱신 (force: true)
                 const channel = await client.channels.fetch(botChannelId, { force: true });
                 
@@ -149,7 +156,11 @@ client.on(Events.VoiceStateUpdate, async(oldState, newState) => {
                         queue.textChannel.send('보이스 채널에 사용자가 없어 연결을 종료합니다.');
                     }
 
-                    if(queue.timeout) clearTimeout(queue.timeout);
+                    const timeout = client.timers.get(guild.id);
+                    if(timeout) {
+                        clearTimeout(timeout);
+                        client.timers.delete(guild.id);
+                    }
 
                     // Lavalink 연결 끊기 요청
                     shoukaku.leaveVoiceChannel(guild.id);

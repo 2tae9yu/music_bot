@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { createEmbed } from '../../utils/musicUtils.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -19,33 +20,8 @@ export default {
         // 대기 중인 곡들 (배열의 1번부터 끝까지)
         const tracks = queue.songs.slice(1);
 
-        // 임베드 만들기
-        const embed = new EmbedBuilder()
-            .setColor('#9f00ff')
-            .setTitle('📑 대기열')
-            .setDescription(
-                `**🎵 현재 재생 중: ** \n` +
-                `[${currentTrack.info.title}](${currentTrack.info.uri}) - \`${formatTime(currentTrack.info.length)}\``
-            )
-
-        // 대기 중인 곡이 있을 경우 목록 추가
-        if(tracks.length > 0) {
-            // 너무 길면 10개만 자르고 나머지는 숫자로 표시
-            const limit = 10;
-            const displayTracks = tracks.slice(0, limit);
-
-            const listString = displayTracks.map((track, i) => {
-                // 가독성을 위해 순번을 굵게 처리
-                return `**${i + 1}.** [${track.info.title}](${track.info.uri}) - \`${formatTime(track.info.length)}\``;
-            }).join('\n');
-
-            embed.addFields({
-                name: '⏱️ 대기 중인 곡',
-                value: listString + (tracks.length > limit ? `\n\n...외 **${tracks.length - limit}**곡` : '')
-            });
-        } else {
-            embed.addFields({ name: '⏱️ 대기 중인 곡', value: '대기 중인 곡이 없습니다.' });
-        }
+        // 기존: const embed = createQueueEmbed(queue.songs);
+        const embed = createEmbed('queue', queue.songs);
 
         return interaction.reply({ embeds: [embed] });
     }

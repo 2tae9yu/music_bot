@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { resetTimer, setupPlayer, createEmbed } from '../../utils/musicUtils.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -48,14 +49,12 @@ export default {
             // 강제 정지 풀고 1번 곡 재생
             queue.isForcedStop = false;
 
-            if(queue.timeout) {
-                clearTimeout(queue.timeout);
-                queue.timeout = null;
-            }
+            // 전역 타이머 끄기
+            resetTimer(interaction.client, interaction.guildId);
             
             await queue.player.playTrack({ track: { encoded: queue.songs[0].encoded } });
 
-            const embed = createEmbed(queue.songs[0], null);
+            const embed = createEmbed('playing', queue.songs[0]);
 
             return interaction.editReply({ embeds: [embed] });
         }
@@ -126,6 +125,9 @@ export default {
             });
         }
 
+        // 전역 플레이어 엔진
+        setupPlayer(player, interaction.client, shoukaku, interaction.guildId);
+
         // 큐 관리
         let queue = interaction.client.queue.get(interaction.guildId);
 
@@ -135,44 +137,10 @@ export default {
                 player: player,
                 textChannel: interaction.channel,
                 songs: [],
-                timeout: null,
                 isForcedStop: false // 🚩 강제 정지 확인용 변수 초기화
             };
 
             interaction.client.queue.set(interaction.guildId, queue);
-
-            // 이벤트 리스너 등록
-            player.on('end', () => {
-                const currentQueue = interaction.client.queue.get(interaction.guildId);
-                if(!currentQueue) return;
-                
-                // 방금 끝난(또는 멈춘) 곡 제거
-                currentQueue.songs.shift();
-
-                // 만약 /정지 명령어로 멈춘 거라면
-                if(currentQueue.isForcedStop) {
-                    // 깃발을 다시 내리고
-                    currentQueue.isForcedStop = false;
-
-                    // 다음 곡을 재생하지 않고 바로 대기 모드로 들어갑니다.
-                    disconnectTimer(currentQueue, interaction, shoukaku);
-
-                    return;
-                }
-
-                // 일반적인 경우: 다음 곡이 있으면 재생
-                if(currentQueue.songs.length > 0) {
-                    const nextTrack = currentQueue.songs[0];
-                    player.playTrack({ track: { encoded: nextTrack.encoded } });
-
-                    // 다음 곡 재생 시: 순번 없이(null) 호출 -> "현재 재생 중" Embed
-                    const embed = createEmbed(nextTrack, null);
-                    currentQueue.textChannel.send({ embeds: [embed] }).catch(() => {});
-                } else {
-                    // 대기열이 비었으면 타이머 시작
-                    disconnectTimer(currentQueue, interaction, shoukaku);
-                }
-            });
         }
 
         // 노래 추가 및 재생 판단
@@ -180,11 +148,10 @@ export default {
 
         let rest = false;
 
-        // 타이머 취소 (노래가 들어왔으니까)
-        if(queue.timeout) {
-            clearTimeout(queue.timeout);
-            queue.timeout = null;
-            rest = true; // 타이머가 돌고 있었다면 "쉬고 있었다"고 체크
+        // 전역 타이머가 돌고 있었다면 취소
+        if(interaction.client.timers.has(interaction.guildId)) {
+            resetTimer(interaction.client, interaction.guildId);
+            rest = true; 
         }
 
         // 플레이어가 멈춰있으면(정지 상태거나 처음일 때) -> 바로 재생
@@ -198,12 +165,12 @@ export default {
             // "지금 재생 시작한 곡"과 "내가 신청한 곡"이 같은지 확인
             if(queue.songs[0].encoded === track.encoded) {
                 // 같으면 -> 재생 시작 메시지
-                const embed = createEmbed(track, null);
+                const embed = createEmbed('playing', track);
                 return interaction.editReply({ embeds: [embed] });
             } else {
                 // 다르면(밀린 노래가 먼저 나옴) -> 대기열 추가 메시지
                 const position = queue.songs.length - 1;
-                const embed = createEmbed(track, position);
+                const embed = createEmbed('add', track, position);
                 return interaction.editReply({ embeds: [embed] });
             }
         } else {
@@ -211,72 +178,8 @@ export default {
             const position  = queue.songs.length - 1;
 
             // 순번 있음(position) -> "대기열 추가"
-            const embed = createEmbed(track, position);
+            const embed = createEmbed('add', track, position);
             return interaction.editReply({ embeds: [embed] });
         }
     }
 };
-
-function createEmbed(track, position) {
-    // 신청자가 없으면 봇 이름으로 대체 (오류 방지)
-    const requester = track.requester || { username: '알 수 없음', displayAvatarURL: () => '' };
-
-    const embed = new EmbedBuilder();
-
-    if(position !== null) {
-        // 대기열 추가 embed
-        embed.setColor('#8e8e8e')
-        // 본문(Description)에 한 줄로 요약
-        // 형식: 🎧 Add Queue - 노래 제목 | #1
-        embed.setTitle('🎧 Add Queue')
-        embed.setDescription(`**${track.info.title}** | \`대기열 #${position}\``);
-    } else {
-        // 현재 재생 중
-        embed.setColor('#1db954') // 💚
-        embed.setTitle('💿 Now Playing')
-        embed.setThumbnail(`https://img.youtube.com/vi/${track.info.identifier}/mqdefault.jpg`)
-        embed.setDescription(`**${track.info.title}**`)
-        embed.addFields(
-            // inline: true 옵션으로 두 항목을 가로로 나란히 배치
-            { name: '곡 길이', value: formatTime(track.info.length), inline: true },
-            { name: '음원', value: `[링크](${track.info.uri})`, inline: true }
-        );
-        embed.setFooter({
-            iconURL: requester.displayAvatarURL(), // 신청자 프로필 사진
-            text: `${requester.username}`, // 신청자 닉네임
-        });
-    }
-
-    return embed;
-}
-
-// 시간 포맷 함수
-function formatTime(ms) {
-    if(!ms) return 'Live';
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
-// [타이머 함수]
-function disconnectTimer(queue, interaction, shoukaku) {
-    // 이미 타이머가 있으면 무시
-    if(queue.timeout) return;
-    
-    queue.timeout = setTimeout(() => {
-        const checkQueue = interaction.client.queue.get(interaction.guildId);
-        
-        // 두 가지 조건 중 하나라도 맞으면 퇴장합니다.
-        // 1. 대기열이 텅 비었을 때 (songs.length === 0) 👉 노래 다 듣고 끝난 경우 해결
-        // 2. OR 플레이어가 재생 중인 곡이 없을 때 (!player.track) 👉 /정지 명령어로 멈춘 경우 해결
-        if(checkQueue && (checkQueue.songs.length === 0 || !checkQueue.player.track)) {
-            shoukaku.leaveVoiceChannel(interaction.guildId);
-            interaction.client.queue.delete(interaction.guildId);
-            checkQueue.textChannel.send('동작이 없어 연결을 종료합니다.').catch(() => {});
-        } 
-        else if(checkQueue) {
-            checkQueue.timeout = null;
-        }
-    }, 1 * 60 * 1000); // 1분
-}
